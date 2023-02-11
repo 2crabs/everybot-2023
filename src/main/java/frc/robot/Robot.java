@@ -6,6 +6,7 @@ package frc.robot;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
+import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
@@ -34,8 +35,8 @@ public class Robot extends TimedRobot {
    * Change kBrushed to kBrushless if you are using NEO's.
    * Use the appropriate other class if you are using different controllers.
    */
-  CANSparkMax driveLeftSpark = new CANSparkMax(1, MotorType.kBrushed);
-  CANSparkMax driveRightSpark = new CANSparkMax(2, MotorType.kBrushed);
+  TalonSRX driveLeftSpark = new TalonSRX(1);
+  TalonSRX driveRightSpark = new TalonSRX(2);
   VictorSPX driveLeftVictor = new VictorSPX(3);
   VictorSPX driveRightVictor = new VictorSPX(4);
 
@@ -174,9 +175,9 @@ public class Robot extends TimedRobot {
 
     // see note above in robotInit about commenting these out one by one to set
     // directions.
-    driveLeftSpark.set(left);
+    driveLeftSpark.set(ControlMode.PercentOutput,left);
     driveLeftVictor.set(ControlMode.PercentOutput, left);
-    driveRightSpark.set(right);
+    driveRightSpark.set(ControlMode.PercentOutput, right);
     driveRightVictor.set(ControlMode.PercentOutput, right);
   }
 
@@ -220,9 +221,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    driveLeftSpark.setIdleMode(IdleMode.kBrake);
+    driveLeftSpark.setNeutralMode(NeutralMode.Brake);
     driveLeftVictor.setNeutralMode(NeutralMode.Brake);
-    driveRightSpark.setIdleMode(IdleMode.kBrake);
+    driveRightSpark.setNeutralMode(NeutralMode.Brake);
     driveRightVictor.setNeutralMode(NeutralMode.Brake);
 
     m_autoSelected = m_chooser.getSelected();
@@ -281,9 +282,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    driveLeftSpark.setIdleMode(IdleMode.kCoast);
+    driveLeftSpark.setNeutralMode(NeutralMode.Coast);
     driveLeftVictor.setNeutralMode(NeutralMode.Coast);
-    driveRightSpark.setIdleMode(IdleMode.kCoast);
+    driveRightSpark.setNeutralMode(NeutralMode.Coast);
     driveRightVictor.setNeutralMode(NeutralMode.Coast);
 
     lastGamePiece = NOTHING;
