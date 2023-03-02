@@ -35,10 +35,11 @@ public class Robot extends TimedRobot {
    * Change kBrushed to kBrushless if you are using NEO's.
    * Use the appropriate other class if you are using different controllers.
    */
+  //not actaully a spark
   TalonSRX driveLeftSpark = new TalonSRX(1);
   TalonSRX driveRightSpark = new TalonSRX(2);
-  VictorSPX driveLeftVictor = new VictorSPX(3);
-  VictorSPX driveRightVictor = new VictorSPX(4);
+  TalonSRX driveLeftVictor = new TalonSRX(3);
+  TalonSRX driveRightVictor = new TalonSRX(4);
 
   /*
    * Mechanism motor controller instances.
@@ -50,7 +51,7 @@ public class Robot extends TimedRobot {
    * The arm is a NEO on Everybud.
    * The intake is a NEO 550 on Everybud.
    */
-  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushless);
+  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushed);
   CANSparkMax intake = new CANSparkMax(6, MotorType.kBrushless);
 
   /**
@@ -63,6 +64,7 @@ public class Robot extends TimedRobot {
    * that you feel is more comfortable.
    */
   Joystick j = new Joystick(0);
+  Joystick j2 = new Joystick(1);
 
   /*
    * Magic numbers. Use these to adjust settings.
@@ -106,12 +108,12 @@ public class Robot extends TimedRobot {
   /**
    * Time to throw game piece in auto
    */
-  static final double AUTO_THROW_TIME_S = 0.375;
+  static final double AUTO_THROW_TIME_S = 1.0;
 
   /**
    * Time to drive back in auto
    */
-  static final double AUTO_DRIVE_TIME = 6.0;
+  static final double AUTO_DRIVE_TIME = 4.0;
 
   /**
    * Speed to drive backwards in auto
@@ -144,12 +146,14 @@ public class Robot extends TimedRobot {
      * Set the arm and intake to brake mode to help hold position.
      * If either one is reversed, change that here too. Arm out is defined
      * as positive, arm in is negative.
-     */
+     *
+     * */
     arm.setInverted(true);
     arm.setIdleMode(IdleMode.kBrake);
     arm.setSmartCurrentLimit(ARM_CURRENT_LIMIT_A);
     intake.setInverted(false);
     intake.setIdleMode(IdleMode.kBrake);
+    
   }
 
   /**
@@ -189,8 +193,8 @@ public class Robot extends TimedRobot {
   public void setArmMotor(double percent) {
     arm.set(percent);
     SmartDashboard.putNumber("arm power (%)", percent);
-    SmartDashboard.putNumber("arm motor current (amps)", arm.getOutputCurrent());
-    SmartDashboard.putNumber("arm motor temperature (C)", arm.getMotorTemperature());
+    //SmartDashboard.putNumber("arm motor current (amps)", arm.getOutputCurrent());
+    //SmartDashboard.putNumber("arm motor temperature (C)", arm.getMotorTemperature());
   }
 
   /**
@@ -203,8 +207,8 @@ public class Robot extends TimedRobot {
     intake.set(percent);
     intake.setSmartCurrentLimit(amps);
     SmartDashboard.putNumber("intake power (%)", percent);
-    SmartDashboard.putNumber("intake motor current (amps)", intake.getOutputCurrent());
-    SmartDashboard.putNumber("intake motor temperature (C)", intake.getMotorTemperature());
+    //SmartDashboard.putNumber("intake motor current (amps)", intake.getOutputCurrent());
+    //SmartDashboard.putNumber("intake motor temperature (C)", intake.getMotorTemperature());
   }
 
   /**
@@ -229,43 +233,49 @@ public class Robot extends TimedRobot {
     m_autoSelected = m_chooser.getSelected();
     System.out.println("Auto selected: " + m_autoSelected);
 
-    if (m_autoSelected == kConeAuto) {
-      autonomousIntakePower = INTAKE_OUTPUT_POWER;
-    } else if (m_autoSelected == kCubeAuto) {
+    // if (m_autoSelected == kConeAuto) {
+    //   autonomousIntakePower = INTAKE_OUTPUT_POWER;
+    // } else if (kCubeAuto == kCubeAuto) {
       autonomousIntakePower = -INTAKE_OUTPUT_POWER;
-    }
+    //}
 
     autonomousStartTime = Timer.getFPGATimestamp();
   }
 
   @Override
   public void autonomousPeriodic() {
-    if (m_autoSelected == kNothingAuto) {
-      setArmMotor(0.0);
-      setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
-      setDriveMotors(0.0, 0.0);
-      return;
-    }
+    // if (m_autoSelected == kNothingAuto) {
+    //   setArmMotor(0.0);
+    //   setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
+    //   setDriveMotors(0.0, 0.0);
+    //   return;
+    // }
 
     double timeElapsed = Timer.getFPGATimestamp() - autonomousStartTime;
 
-    if (timeElapsed < ARM_EXTEND_TIME_S) {
+    if (timeElapsed < ARM_EXTEND_TIME_S){
+      //arm on, intake off, no drive
       setArmMotor(ARM_OUTPUT_POWER);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, 0.0);
-    } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S) {
-      setArmMotor(0.0);
-      setIntakeMotor(autonomousIntakePower, INTAKE_CURRENT_LIMIT_A);
+    }
+    else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S) {
+      //arm off, intake on, drive off
+      setArmMotor(ARM_OUTPUT_POWER);
+      setIntakeMotor(-1.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, 0.0);
     } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S) {
+      //arm in, intake off, no drive
       setArmMotor(-ARM_OUTPUT_POWER);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, 0.0);
     } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME) {
+      //arm off, intake on, drive on
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
-      setDriveMotors(AUTO_DRIVE_SPEED, 0.0);
+      setDriveMotors(0.0, -AUTO_DRIVE_SPEED);
     } else {
+      //arm off, intake off, drive off
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, 0.0);
@@ -293,10 +303,10 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     double armPower;
-    if (j.getRawButton(7)) {
+    if (j2.getRawButton(6)) {
       // lower the arm
       armPower = -ARM_OUTPUT_POWER;
-    } else if (j.getRawButton(5)) {
+    } else if (j2.getRawButton(5)) {
       // raise the arm
       armPower = ARM_OUTPUT_POWER;
     } else {
@@ -307,12 +317,12 @@ public class Robot extends TimedRobot {
   
     double intakePower;
     int intakeAmps;
-    if (j.getRawButton(8)) {
+    if (j2.getRawButton(1)) {
       // cube in or cone out
       intakePower = INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CUBE;
-    } else if (j.getRawButton(6)) {
+    } else if (j2.getRawButton(3)) {
       // cone in or cube out
       intakePower = -INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
@@ -331,8 +341,9 @@ public class Robot extends TimedRobot {
 
     /*
      * Negative signs here because the values from the analog sticks are backwards
-     * from what we want. Forward returns a negative when we want it positive.
+     * from what we want. Forward returnsu a negative when we want it positive.
      */
-    setDriveMotors(-j.getRawAxis(1), -j.getRawAxis(2));
+
+    setDriveMotors(j.getRawAxis(0)/2.2, j.getRawAxis(1)/1.5);
   }
 }
