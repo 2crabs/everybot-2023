@@ -9,9 +9,12 @@ import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.wpilibj.AddressableLED;
+import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -40,7 +43,12 @@ public class Robot extends TimedRobot {
   TalonSRX driveRightSpark = new TalonSRX(2);
   TalonSRX driveLeftVictor = new TalonSRX(3);
   TalonSRX driveRightVictor = new TalonSRX(4);
+  RelativeEncoder intakeEncoder;
 
+  //leds
+  AddressableLED leds;
+  AddressableLEDBuffer ledsBuffer;
+  boolean enabled = false;
   /*
    * Mechanism motor controller instances.
    * 
@@ -154,6 +162,11 @@ public class Robot extends TimedRobot {
     intake.setInverted(false);
     intake.setIdleMode(IdleMode.kBrake);
     
+    intakeEncoder = intake.getEncoder();
+
+    leds = new AddressableLED(1);
+    ledsBuffer = new AddressableLEDBuffer(29);
+    leds.setLength(ledsBuffer.getLength());
   }
 
   /**
@@ -211,6 +224,12 @@ public class Robot extends TimedRobot {
     //SmartDashboard.putNumber("intake motor temperature (C)", intake.getMotorTemperature());
   }
 
+  public void setLedColor(int R, int G, int B){
+    for(int i=0; i<29; i++){
+      ledsBuffer.setRGB(i, R, G, B);
+    }
+  }
+
   /**
    * This method is called every 20 ms, no matter the mode. It runs after
    * the autonomous and teleop specific period methods.
@@ -218,6 +237,12 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     SmartDashboard.putNumber("Time (seconds)", Timer.getFPGATimestamp());
+    if (!enabled){
+      setLedColor(255, 0, 0);
+    }
+    leds.setData(ledsBuffer);
+    leds.start();
+    enabled = false;
   }
 
   double autonomousStartTime;
@@ -225,6 +250,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    setLedColor(64, 64, 64);
     driveLeftSpark.setNeutralMode(NeutralMode.Brake);
     driveLeftVictor.setNeutralMode(NeutralMode.Brake);
     driveRightSpark.setNeutralMode(NeutralMode.Brake);
@@ -244,6 +270,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousPeriodic() {
+    enabled = true;
     // if (m_autoSelected == kNothingAuto) {
     //   setArmMotor(0.0);
     //   setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
@@ -292,6 +319,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    setLedColor(64, 64, 64);
     driveLeftSpark.setNeutralMode(NeutralMode.Coast);
     driveLeftVictor.setNeutralMode(NeutralMode.Coast);
     driveRightSpark.setNeutralMode(NeutralMode.Coast);
@@ -302,6 +330,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
+    enabled = true;
     double armPower;
     if (j2.getRawButton(6)) {
       // lower the arm
@@ -330,20 +359,37 @@ public class Robot extends TimedRobot {
     } else if (lastGamePiece == CUBE) {
       intakePower = INTAKE_HOLD_POWER;
       intakeAmps = INTAKE_HOLD_CURRENT_LIMIT_A;
+      
     } else if (lastGamePiece == CONE) {
       intakePower = -INTAKE_HOLD_POWER;
       intakeAmps = INTAKE_HOLD_CURRENT_LIMIT_A;
+      
     } else {
       intakePower = 0.0;
       intakeAmps = 0;
     }
+
+    if (lastGamePiece == CUBE){
+      int multiplier = ((int)(Timer.getFPGATimestamp()*3.0))%2;
+      setLedColor(153*multiplier, 0, 255*multiplier);
+    }
+    if (lastGamePiece == CONE){
+      int multiplier = ((int)(Timer.getFPGATimestamp()*3.0))%2;
+      setLedColor(255*multiplier, 204*multiplier, 0);
+    }
     setIntakeMotor(intakePower, intakeAmps);
 
+    if (Math.abs(intakeEncoder.getVelocity())  < 30.0 && lastGamePiece != NOTHING && (!(j2.getRawButton(1)) && !(j2.getRawButton(3)))){
+      setLedColor(0, 255, 0);
+    }
     /*
      * Negative signs here because the values from the analog sticks are backwards
      * from what we want. Forward returnsu a negative when we want it positive.
      */
-
-    setDriveMotors(j.getRawAxis(0)/2.2, j.getRawAxis(1)/1.5);
+    if (j.getRawButton(1)){
+      setDriveMotors(j.getRawAxis(0)/3.5, j.getRawAxis(1)/3.0);
+    } else {
+      setDriveMotors(j.getRawAxis(0)/2.2, j.getRawAxis(1)/1.5);
+    }
   }
 }
