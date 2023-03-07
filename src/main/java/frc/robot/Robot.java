@@ -4,6 +4,10 @@
 
 package frc.robot;
 
+import java.util.Vector;
+
+import javax.lang.model.util.ElementScanner6;
+
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
@@ -13,11 +17,16 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
+import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
+import edu.wpi.first.wpilibj.AnalogAccelerometer;
+import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -44,6 +53,13 @@ public class Robot extends TimedRobot {
   TalonSRX driveLeftVictor = new TalonSRX(3);
   TalonSRX driveRightVictor = new TalonSRX(4);
   RelativeEncoder intakeEncoder;
+
+  /**
+   * 3-Axis Accelerometer
+   * 
+   * Range defaults to +- 8 G's
+   */
+  Accelerometer accelerometer = new BuiltInAccelerometer();
 
   //leds
   AddressableLED leds;
@@ -124,9 +140,24 @@ public class Robot extends TimedRobot {
   static final double AUTO_DRIVE_TIME = 4.0;
 
   /**
+   * Time to drive forward in auto
+   */
+  static final double AUTO_DRIVE_TO_CHARGING_STATION_TIME = 4.0;
+
+  /**
    * Speed to drive backwards in auto
    */
   static final double AUTO_DRIVE_SPEED = -0.25;
+
+  /**
+   * Angle in which the robot is off-balance
+   */
+  static final double kOffBalanceAngleThresholdDegrees = 10;
+
+  /**
+   * Angle at which the robot is balanced
+   */
+  static final double kOonBalanceAngleThresholdDegrees  = 5;
 
   /**
    * This method is run once when the robot is first started up.
@@ -173,8 +204,8 @@ public class Robot extends TimedRobot {
    * Calculate and set the power to apply to the left and right
    * drive motors.
    * 
-   * @param forward Desired forward speed. Positive is forward.
-   * @param turn    Desired turning speed. Positive is counter clockwise from
+   * @param turn Desired forward speed. Positive is forward.
+   * @param forward    Desired turning speed. Positive is counter clockwise from
    *                above.
    */
   public void setDriveMotors(double forward, double turn) {
@@ -231,6 +262,30 @@ public class Robot extends TimedRobot {
   }
 
   /**
+   * calculating the X and Y angles of the robot based on the readings from the
+   * built in 3-Axis accelerometer.
+   */
+  public Vector<Float> CalculateXYAngles() {
+    Vector<Float> angles = new Vector<Float>();
+
+    double roll;
+    double pitch;
+
+    float xvel = (float)accelerometer.getX();
+    float yvel = (float)accelerometer.getY();
+    float zvel = (float)accelerometer.getZ();
+
+    roll = Math.toDegrees(Math.atan2(yvel, zvel));
+
+    pitch = Math.toDegrees(Math.atan2(xvel, zvel));
+
+    angles.add((float)roll);
+    angles.add((float)pitch);
+
+    return angles;
+  }
+
+  /**
    * This method is called every 20 ms, no matter the mode. It runs after
    * the autonomous and teleop specific period methods.
    */
@@ -247,6 +302,9 @@ public class Robot extends TimedRobot {
 
   double autonomousStartTime;
   double autonomousIntakePower;
+
+  boolean balanceXMode;
+  boolean balanceYMode;
 
   @Override
   public void autonomousInit() {
@@ -277,7 +335,30 @@ public class Robot extends TimedRobot {
     //   setDriveMotors(0.0, 0.0);
     //   return;
     // }
+    
+    //calculating the pitch angle of the robot based on -
+    //-the readings from the 3-Axis accelerometer.
+    Vector<Float> XYAngles = CalculateXYAngles();
+    double pitchAngle = (double)XYAngles.get(0);
+    double xAxisRate = 0;
 
+    //calculate if the robot is off-balance
+    if (!balanceXMode && 
+        Math.abs(pitchAngle) >= 
+        Math.abs(kOffBalanceAngleThresholdDegrees)) {
+      balanceXMode = true;
+    } else if (balanceXMode && 
+        Math.abs(pitchAngle) <= 
+        Math.abs(kOonBalanceAngleThresholdDegrees)) {
+      balanceXMode = false;
+    }
+
+    //calculate the speed that the robot needs to drive in order to become balanced
+    if (balanceXMode) {
+      double pitchAngleRadians = pitchAngle * (Math.PI / 180.0);
+      xAxisRate = Math.sin(pitchAngleRadians);
+    }
+    
     double timeElapsed = Timer.getFPGATimestamp() - autonomousStartTime;
 
     if (timeElapsed < ARM_EXTEND_TIME_S){
@@ -301,8 +382,21 @@ public class Robot extends TimedRobot {
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, -AUTO_DRIVE_SPEED);
+    } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + AUTO_DRIVE_TO_CHARGING_STATION_TIME) {
+      //arm off, intake off, drive on
+      setArmMotor(0.0);
+      setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
+      setDriveMotors(0.0, AUTO_DRIVE_SPEED);
+    } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + (AUTO_DRIVE_TO_CHARGING_STATION_TIME*2)){
+      //arm off, intake off, drive on/off depending on angle of robot
+      setArmMotor(0.0);
+      setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
+      if (balanceXMode) {
+        setDriveMotors(xAxisRate * AUTO_DRIVE_SPEED, 0.0);
+      } else {
+        setDriveMotors(0.0, 0.0);
+      }
     } else {
-      //arm off, intake off, drive off
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, 0.0);
@@ -331,6 +425,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     enabled = true;
+
     double armPower;
     if (j2.getRawButton(6)) {
       // lower the arm
