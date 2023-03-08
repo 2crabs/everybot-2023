@@ -13,11 +13,9 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
-import edu.wpi.first.wpilibj.AddressableLED;
-import edu.wpi.first.wpilibj.AddressableLEDBuffer;
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.math.filter.LinearFilter;
+import edu.wpi.first.wpilibj.*;
+import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -49,6 +47,11 @@ public class Robot extends TimedRobot {
   AddressableLED leds;
   AddressableLEDBuffer ledsBuffer;
   boolean enabled = false;
+
+  //accelerometer
+  Accelerometer accelerometer;
+  LinearFilter accelFilter = LinearFilter.movingAverage(10);
+
   /*
    * Mechanism motor controller instances.
    * 
@@ -167,6 +170,8 @@ public class Robot extends TimedRobot {
     leds = new AddressableLED(1);
     ledsBuffer = new AddressableLEDBuffer(29);
     leds.setLength(ledsBuffer.getLength());
+
+    accelerometer = new BuiltInAccelerometer();
   }
 
   /**
@@ -237,6 +242,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     SmartDashboard.putNumber("Time (seconds)", Timer.getFPGATimestamp());
+    SmartDashboard.putNumber("y accel", accelFilter.calculate(accelerometer.getY()));
     if (!enabled){
       setLedColor(255, 0, 0);
     }
