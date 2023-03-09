@@ -238,6 +238,23 @@ public class Robot extends TimedRobot {
     }
   }
 
+  public void intakeLed(double speed, int r, int g, int b){
+    for(int i=0; i<13; i++){
+      if(((i+(int)(Timer.getFPGATimestamp()*speed))%6) < 3) {
+        ledsBuffer.setRGB(i, r, g, b);
+      } else {
+        ledsBuffer.setRGB(i, 0, 0, 0);
+      }
+    }
+    for(int i=13; i<29; i++){
+      if(((i-(int)(Timer.getFPGATimestamp()*speed))%6) < 3) {
+        ledsBuffer.setRGB(i, r, g, b);
+      } else {
+        ledsBuffer.setRGB(i, 0, 0, 0);
+      }
+    }
+  }
+
   /**
    * This method is called every 20 ms, no matter the mode. It runs after
    * the autonomous and teleop specific period methods.
@@ -359,13 +376,13 @@ public class Robot extends TimedRobot {
       intakePower = INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CUBE;
-      blinkLed(10.0, 153, 0, 255);
+      intakeLed(3.0, 153, 0, 255);
     } else if (j2.getRawButton(3)) {
       // cone in or cube out
       intakePower = -INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CONE;
-      blinkLed(10.0, 255, 204, 0);
+      intakeLed(3.0, 255, 204, 0);
     } else if (lastGamePiece == CUBE) {
       intakePower = INTAKE_HOLD_POWER;
       intakeAmps = INTAKE_HOLD_CURRENT_LIMIT_A;
