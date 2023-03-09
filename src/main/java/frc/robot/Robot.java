@@ -230,6 +230,14 @@ public class Robot extends TimedRobot {
     }
   }
 
+  public void blinkLed(double speed, int r, int g, int b){
+    if ((int)(Timer.getFPGATimestamp()*speed)%2 == 1){
+      setLedColor(r, g, b);
+    } else {
+      setLedColor(0,0,0);
+    }
+  }
+
   /**
    * This method is called every 20 ms, no matter the mode. It runs after
    * the autonomous and teleop specific period methods.
@@ -351,32 +359,26 @@ public class Robot extends TimedRobot {
       intakePower = INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CUBE;
+      blinkLed(10.0, 153, 0, 255);
     } else if (j2.getRawButton(3)) {
       // cone in or cube out
       intakePower = -INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CONE;
+      blinkLed(10.0, 255, 204, 0);
     } else if (lastGamePiece == CUBE) {
       intakePower = INTAKE_HOLD_POWER;
       intakeAmps = INTAKE_HOLD_CURRENT_LIMIT_A;
-      
+      blinkLed(3.0, 153, 0, 255);
     } else if (lastGamePiece == CONE) {
       intakePower = -INTAKE_HOLD_POWER;
       intakeAmps = INTAKE_HOLD_CURRENT_LIMIT_A;
-      
+      blinkLed(3.0, 255, 204, 0);
     } else {
       intakePower = 0.0;
       intakeAmps = 0;
     }
 
-    if (lastGamePiece == CUBE){
-      int multiplier = ((int)(Timer.getFPGATimestamp()*3.0))%2;
-      setLedColor(153*multiplier, 0, 255*multiplier);
-    }
-    if (lastGamePiece == CONE){
-      int multiplier = ((int)(Timer.getFPGATimestamp()*3.0))%2;
-      setLedColor(255*multiplier, 204*multiplier, 0);
-    }
     setIntakeMotor(intakePower, intakeAmps);
 
     if (Math.abs(intakeEncoder.getVelocity())  < 30.0 && lastGamePiece != NOTHING && (!(j2.getRawButton(1)) && !(j2.getRawButton(3)))){
