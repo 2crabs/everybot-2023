@@ -59,7 +59,7 @@ public class Robot extends TimedRobot {
    * The arm is a NEO on Everybud.
    * The intake is a NEO 550 on Everybud.
    */
-  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushed);
+  TalonSRX arm = new TalonSRX(5);
   CANSparkMax intake = new CANSparkMax(6, MotorType.kBrushless);
 
   /**
@@ -128,6 +128,7 @@ public class Robot extends TimedRobot {
    */
   static final double AUTO_DRIVE_SPEED = -0.25;
 
+  double startTime = -1.0;
   /**
    * This method is run once when the robot is first started up.
    */
@@ -157,8 +158,6 @@ public class Robot extends TimedRobot {
      *
      * */
     arm.setInverted(true);
-    arm.setIdleMode(IdleMode.kBrake);
-    arm.setSmartCurrentLimit(ARM_CURRENT_LIMIT_A);
     intake.setInverted(false);
     intake.setIdleMode(IdleMode.kBrake);
     
@@ -204,7 +203,7 @@ public class Robot extends TimedRobot {
    * @param percent
    */
   public void setArmMotor(double percent) {
-    arm.set(percent);
+    arm.set(ControlMode.PercentOutput, percent);
     SmartDashboard.putNumber("arm power (%)", percent);
     //SmartDashboard.putNumber("arm motor current (amps)", arm.getOutputCurrent());
     //SmartDashboard.putNumber("arm motor temperature (C)", arm.getMotorTemperature());
@@ -262,12 +261,26 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     SmartDashboard.putNumber("Time (seconds)", Timer.getFPGATimestamp());
+    //set timer for when robot is enabled
+    if (startTime == -1.0 && enabled){
+      startTime = Timer.getFPGATimestamp();
+    }
+    if(!enabled){
+      startTime=-1.0;
+    }
+    //flash led for a small amount of time after robot is enabled
+    if(startTime != -1.0 && (Timer.getFPGATimestamp()-startTime) < 2.0){
+      blinkLed(10.0, 255, 0, 0);
+    }
     if (!enabled){
       setLedColor(255, 0, 0);
     }
     leds.setData(ledsBuffer);
     leds.start();
     enabled = false;
+
+    //default color
+    setLedColor(64, 64, 64);
   }
 
   double autonomousStartTime;
@@ -275,7 +288,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    setLedColor(64, 64, 64);
     driveLeftSpark.setNeutralMode(NeutralMode.Brake);
     driveLeftVictor.setNeutralMode(NeutralMode.Brake);
     driveRightSpark.setNeutralMode(NeutralMode.Brake);
@@ -344,7 +356,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    setLedColor(64, 64, 64);
     driveLeftSpark.setNeutralMode(NeutralMode.Coast);
     driveLeftVictor.setNeutralMode(NeutralMode.Coast);
     driveRightSpark.setNeutralMode(NeutralMode.Coast);
