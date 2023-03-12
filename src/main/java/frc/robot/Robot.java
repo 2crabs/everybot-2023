@@ -69,6 +69,9 @@ public class Robot extends TimedRobot {
   XboxController driveController = new XboxController(0);
   XboxController manipulatorController = new XboxController(1);
   XboxController everythingController = new XboxController(2);
+  boolean isControllerConnected = false;
+
+  double rumbleBuffer = 0.0;
 
   /*
    * Magic numbers. Use these to adjust settings.
@@ -266,10 +269,23 @@ public class Robot extends TimedRobot {
     }
 
     //set controller if connected
-    if(everythingController.isConnected()){
+    if(everythingController.isConnected() && !isControllerConnected){
       driveController = everythingController;
       manipulatorController = everythingController;
+      isControllerConnected = true;
+      System.out.println("Controller 3 connected");
     }
+
+    if (!everythingController.isConnected() && isControllerConnected){
+      driveController = new XboxController(0);
+      manipulatorController = new XboxController(1);
+      isControllerConnected = false;
+      System.out.println("Controllers reset to default");
+    }
+
+    //controller rumble
+    manipulatorController.setRumble(GenericHID.RumbleType.kBothRumble, rumbleBuffer);
+    driveController.setRumble(GenericHID.RumbleType.kBothRumble, rumbleBuffer);
 
     //flash led for a small amount of time after robot is enabled
     if(startTime != -1.0 && (Timer.getFPGATimestamp()-startTime) < 2.0){
@@ -372,6 +388,7 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     enabled = true;
     double armPower;
+    rumbleBuffer = 0.0;
     if (manipulatorController.getLeftBumper()) {
       // lower the arm
       armPower = -ARM_OUTPUT_POWER;
@@ -393,7 +410,7 @@ public class Robot extends TimedRobot {
       lastGamePiece = CUBE;
       intakeLed(20.0, 153, 0, 255);
       if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
-        manipulatorController.setRumble(GenericHID.RumbleType.kBothRumble, 0.5);
+        rumbleBuffer = 0.5;
       }
     } else if (manipulatorController.getXButton()) {
       // cone in or cube out
@@ -403,7 +420,7 @@ public class Robot extends TimedRobot {
       intakeLed(20.0, 255, 204, 0);
       //haptic feedback
       if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
-        manipulatorController.setRumble(GenericHID.RumbleType.kBothRumble, 0.5);
+        rumbleBuffer = 0.5;
       }
     } else if (lastGamePiece == CUBE) {
       intakePower = INTAKE_HOLD_POWER;
