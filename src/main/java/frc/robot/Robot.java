@@ -392,12 +392,19 @@ public class Robot extends TimedRobot {
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CUBE;
       intakeLed(20.0, 153, 0, 255);
+      if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
+        manipulatorController.setRumble(GenericHID.RumbleType.kBothRumble, 0.5);
+      }
     } else if (manipulatorController.getXButton()) {
       // cone in or cube out
       intakePower = -INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CONE;
       intakeLed(20.0, 255, 204, 0);
+      //haptic feedback
+      if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
+        manipulatorController.setRumble(GenericHID.RumbleType.kBothRumble, 0.5);
+      }
     } else if (lastGamePiece == CUBE) {
       intakePower = INTAKE_HOLD_POWER;
       intakeAmps = INTAKE_HOLD_CURRENT_LIMIT_A;
