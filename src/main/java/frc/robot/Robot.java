@@ -13,6 +13,7 @@ import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.*;
+import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -72,6 +73,8 @@ public class Robot extends TimedRobot {
   boolean isControllerConnected = false;
 
   double rumbleBuffer = 0.0;
+
+  Accelerometer accel = new BuiltInAccelerometer();
 
   /*
    * Magic numbers. Use these to adjust settings.
@@ -253,6 +256,10 @@ public class Robot extends TimedRobot {
     }
   }
 
+  public double vectorLength(double x, double y, double z){
+    return Math.sqrt((x*x)+(y*y)+(z*z));
+  }
+
   /**
    * This method is called every 20 ms, no matter the mode. It runs after
    * the autonomous and teleop specific period methods.
@@ -285,7 +292,6 @@ public class Robot extends TimedRobot {
 
     //controller rumble
     manipulatorController.setRumble(GenericHID.RumbleType.kBothRumble, rumbleBuffer);
-    driveController.setRumble(GenericHID.RumbleType.kBothRumble, rumbleBuffer);
 
     //flash led for a small amount of time after robot is enabled
     if(startTime != -1.0 && (Timer.getFPGATimestamp()-startTime) < 2.0){
@@ -450,5 +456,7 @@ public class Robot extends TimedRobot {
      */
 
     setDriveMotors(driveController.getLeftY()/2.2, driveController.getLeftX()/1.5);
+    driveController.setRumble(GenericHID.RumbleType.kBothRumble, vectorLength(accel.getX(), accel.getY(), 0.0));
+    //System.out.println(vectorLength(accel.getX(), accel.getY(), 0.0));
   }
 }
