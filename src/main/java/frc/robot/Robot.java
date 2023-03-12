@@ -7,17 +7,12 @@ package frc.robot;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
-import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
-import edu.wpi.first.wpilibj.AddressableLED;
-import edu.wpi.first.wpilibj.AddressableLEDBuffer;
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.*;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -38,7 +33,7 @@ public class Robot extends TimedRobot {
    * Change kBrushed to kBrushless if you are using NEO's.
    * Use the appropriate other class if you are using different controllers.
    */
-  //not actaully a spark
+  //not actually a spark
   TalonSRX driveLeftSpark = new TalonSRX(1);
   TalonSRX driveRightSpark = new TalonSRX(2);
   TalonSRX driveLeftVictor = new TalonSRX(3);
@@ -71,8 +66,9 @@ public class Robot extends TimedRobot {
    * mode (switch set to X on the bottom) or a different controller
    * that you feel is more comfortable.
    */
-  Joystick j = new Joystick(0);
-  Joystick j2 = new Joystick(1);
+  XboxController driveController = new XboxController(0);
+  XboxController manipulatorController = new XboxController(1);
+  XboxController everythingController = new XboxController(2);
 
   /*
    * Magic numbers. Use these to adjust settings.
@@ -268,6 +264,13 @@ public class Robot extends TimedRobot {
     if(!enabled){
       startTime=-1.0;
     }
+
+    //set controller if connected
+    if(everythingController.isConnected()){
+      driveController = everythingController;
+      manipulatorController = everythingController;
+    }
+
     //flash led for a small amount of time after robot is enabled
     if(startTime != -1.0 && (Timer.getFPGATimestamp()-startTime) < 2.0){
       blinkLed(10.0, 255, 0, 0);
@@ -281,6 +284,7 @@ public class Robot extends TimedRobot {
 
     //default color
     setLedColor(64, 64, 64);
+
   }
 
   double autonomousStartTime;
@@ -368,10 +372,10 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     enabled = true;
     double armPower;
-    if (j2.getRawButton(6)) {
+    if (manipulatorController.getLeftBumper()) {
       // lower the arm
       armPower = -ARM_OUTPUT_POWER;
-    } else if (j2.getRawButton(5)) {
+    } else if (manipulatorController.getRightBumper()) {
       // raise the arm
       armPower = ARM_OUTPUT_POWER;
     } else {
@@ -382,13 +386,13 @@ public class Robot extends TimedRobot {
   
     double intakePower;
     int intakeAmps;
-    if (j2.getRawButton(1)) {
+    if (manipulatorController.getAButton()) {
       // cube in or cone out
       intakePower = INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CUBE;
       intakeLed(20.0, 153, 0, 255);
-    } else if (j2.getRawButton(3)) {
+    } else if (manipulatorController.getXButton()) {
       // cone in or cube out
       intakePower = -INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
@@ -409,21 +413,18 @@ public class Robot extends TimedRobot {
 
     setIntakeMotor(intakePower, intakeAmps);
 
-    if (Math.abs(intakeEncoder.getVelocity())  < 30.0 && lastGamePiece != NOTHING && (!(j2.getRawButton(1)) && !(j2.getRawButton(3)))){
+    if (Math.abs(intakeEncoder.getVelocity())  < 30.0
+            && lastGamePiece != NOTHING
+            && !(manipulatorController.getXButton())
+            && !(manipulatorController.getAButton()))
+    {
       setLedColor(0, 255, 0);
     }
     /*
      * Negative signs here because the values from the analog sticks are backwards
      * from what we want. Forward returnsu a negative when we want it positive.
      */
-    if (j.getRawButton(1)){
-      setDriveMotors(j.getRawAxis(0)/3.5, j.getRawAxis(1)/3.0);
-    } else {
-      setDriveMotors(j.getRawAxis(0)/2.2, j.getRawAxis(1)/1.5);
-    }
 
-    if (j.getRawButton(3)){
-      setDriveMotors(0.0, 0.2);
-    }
+    setDriveMotors(driveController.getLeftY()/2.2, driveController.getLeftX()/1.5);
   }
 }
