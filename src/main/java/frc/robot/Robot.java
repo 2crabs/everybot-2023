@@ -416,7 +416,7 @@ public class Robot extends TimedRobot {
       lastGamePiece = CUBE;
       intakeLed(20.0, 153, 0, 255);
       if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
-        rumbleBuffer = 0.5;
+        rumbleBuffer = 1.0;
       }
     } else if (manipulatorController.getXButton()) {
       // cone in or cube out
@@ -426,7 +426,7 @@ public class Robot extends TimedRobot {
       intakeLed(20.0, 255, 204, 0);
       //haptic feedback
       if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
-        rumbleBuffer = 0.5;
+        rumbleBuffer = 1.0;
       }
     } else if (lastGamePiece == CUBE) {
       intakePower = INTAKE_HOLD_POWER;
@@ -456,7 +456,10 @@ public class Robot extends TimedRobot {
      */
 
     setDriveMotors(driveController.getLeftY()/2.2, driveController.getLeftX()/1.5);
-    driveController.setRumble(GenericHID.RumbleType.kBothRumble, vectorLength(accel.getX(), accel.getY(), 0.0));
-    //System.out.println(vectorLength(accel.getX(), accel.getY(), 0.0));
+    if (vectorLength(accel.getX(), accel.getY(), 0.0) > 0.45) {
+      driveController.setRumble(GenericHID.RumbleType.kBothRumble, vectorLength(accel.getX(), accel.getY(), 0.0));
+    } else{
+      driveController.setRumble(GenericHID.RumbleType.kBothRumble, 0);
+    }
   }
 }
