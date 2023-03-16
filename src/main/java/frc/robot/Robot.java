@@ -187,6 +187,7 @@ public class Robot extends TimedRobot {
      */
     double left = forward - turn;
     double right = forward + turn;
+    right = right * 1.08;
 
     SmartDashboard.putNumber("drive left power (%)", left);
     SmartDashboard.putNumber("drive right power (%)", right);
@@ -395,18 +396,19 @@ public class Robot extends TimedRobot {
     enabled = true;
     double armPower;
     rumbleBuffer = 0.0;
-    if (manipulatorController.getLeftBumper()) {
+    if (manipulatorController.getRightBumper()) {
       // lower the arm
       armPower = -ARM_OUTPUT_POWER;
-    } else if (manipulatorController.getRightBumper()) {
+    } else if (manipulatorController.getLeftBumper()) {
       // raise the arm
       armPower = ARM_OUTPUT_POWER;
     } else {
       // do nothing and let it sit where it is
       armPower = 0.0;
     }
+
     setArmMotor(armPower);
-  
+    
     double intakePower;
     int intakeAmps;
     if (manipulatorController.getAButton()) {
@@ -415,7 +417,7 @@ public class Robot extends TimedRobot {
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
       lastGamePiece = CUBE;
       intakeLed(20.0, 153, 0, 255);
-      if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
+      if(Math.abs(intakeEncoder.getVelocity()) < 120.0){
         rumbleBuffer = 1.0;
       }
     } else if (manipulatorController.getXButton()) {
@@ -425,7 +427,7 @@ public class Robot extends TimedRobot {
       lastGamePiece = CONE;
       intakeLed(20.0, 255, 204, 0);
       //haptic feedback
-      if(Math.abs(intakeEncoder.getVelocity()) < 30.0){
+      if(Math.abs(intakeEncoder.getVelocity()) < 120.0){
         rumbleBuffer = 1.0;
       }
     } else if (lastGamePiece == CUBE) {
@@ -454,8 +456,14 @@ public class Robot extends TimedRobot {
      * Negative signs here because the values from the analog sticks are backwards
      * from what we want. Forward returnsu a negative when we want it positive.
      */
+    if (driveController.getBButton()){
+      setDriveMotors(0.0, -0.3);
+    }else if (driveController.getYButton()) {
+      setDriveMotors(0.0, -0.7);
+    } else {
+      setDriveMotors(driveController.getLeftX()/2.2, driveController.getLeftY()/1.5);
+    }
 
-    setDriveMotors(driveController.getLeftY()/2.2, driveController.getLeftX()/1.5);
     if (vectorLength(accel.getX(), accel.getY(), 0.0) > 0.45) {
       driveController.setRumble(GenericHID.RumbleType.kBothRumble, vectorLength(accel.getX(), accel.getY(), 0.0));
     } else{
