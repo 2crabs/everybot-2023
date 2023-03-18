@@ -261,6 +261,14 @@ public class Robot extends TimedRobot {
     return Math.sqrt((x*x)+(y*y)+(z*z));
   }
 
+  public double curveInput(double input, double power){
+    if(input < 0.0){
+      return -(Math.pow(input, power));
+    } else{
+      return Math.pow(input, power);
+    }
+  }
+
   /**
    * This method is called every 20 ms, no matter the mode. It runs after
    * the autonomous and teleop specific period methods.
@@ -461,7 +469,7 @@ public class Robot extends TimedRobot {
     }else if (driveController.getYButton()) {
       setDriveMotors(0.0, -0.7);
     } else {
-      setDriveMotors(driveController.getLeftX()/2.2, driveController.getLeftY()/1.5);
+      setDriveMotors(curveInput(driveController.getLeftX(),2.0)/2.2, curveInput(driveController.getLeftY(), 2.0)/1.5);
     }
 
     if (vectorLength(accel.getX(), accel.getY(), 0.0) > 0.45) {
