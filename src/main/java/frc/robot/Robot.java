@@ -469,7 +469,7 @@ public class Robot extends TimedRobot {
     }else if (driveController.getYButton()) {
       setDriveMotors(0.0, -0.7);
     } else {
-      setDriveMotors(curveInput(driveController.getLeftX(),2.0)/2.2, curveInput(driveController.getLeftY(), 2.0)/1.5);
+      setDriveMotors(driveController.getLeftX()/2.2, driveController.getLeftY()/1.5);
     }
 
     if (vectorLength(accel.getX(), accel.getY(), 0.0) > 0.45) {
