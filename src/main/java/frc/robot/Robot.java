@@ -75,7 +75,7 @@ public class Robot extends TimedRobot {
    * The arm is a NEO on Everybud.
    * The intake is a NEO 550 on Everybud.
    */
-  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushed);
+  TalonSRX arm = new TalonSRX(5);
   CANSparkMax intake = new CANSparkMax(6, MotorType.kBrushless);
 
   /**
@@ -142,12 +142,14 @@ public class Robot extends TimedRobot {
   /**
    * Time to drive forward in auto
    */
-  static final double AUTO_DRIVE_TO_CHARGING_STATION_TIME = 4.0;
+  //2.75
+  static final double AUTO_DRIVE_TO_CHARGING_STATION_TIME = 2.75;
 
   /**
    * Speed to drive backwards in auto
    */
   static final double AUTO_DRIVE_SPEED = -0.25;
+  static final double AUTO_DRIVE_TO_CHARGING_STATION_SPEED = -0.6;
 
   /**
    * Angle in which the robot is off-balance
@@ -188,8 +190,6 @@ public class Robot extends TimedRobot {
      *
      * */
     arm.setInverted(true);
-    arm.setIdleMode(IdleMode.kBrake);
-    arm.setSmartCurrentLimit(ARM_CURRENT_LIMIT_A);
     intake.setInverted(false);
     intake.setIdleMode(IdleMode.kBrake);
     
@@ -235,7 +235,7 @@ public class Robot extends TimedRobot {
    * @param percent
    */
   public void setArmMotor(double percent) {
-    arm.set(percent);
+    arm.set(ControlMode.PercentOutput, percent);
     SmartDashboard.putNumber("arm power (%)", percent);
     //SmartDashboard.putNumber("arm motor current (amps)", arm.getOutputCurrent());
     //SmartDashboard.putNumber("arm motor temperature (C)", arm.getMotorTemperature());
@@ -292,6 +292,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     SmartDashboard.putNumber("Time (seconds)", Timer.getFPGATimestamp());
+    SmartDashboard.putNumber("Angle", CalculateXYAngles().get(0));
     if (!enabled){
       setLedColor(255, 0, 0);
     }
@@ -339,6 +340,7 @@ public class Robot extends TimedRobot {
     //calculating the pitch angle of the robot based on -
     //-the readings from the 3-Axis accelerometer.
     Vector<Float> XYAngles = CalculateXYAngles();
+    System.out.println(CalculateXYAngles());
     double pitchAngle = (double)XYAngles.get(0);
     double xAxisRate = 0;
 
@@ -381,20 +383,22 @@ public class Robot extends TimedRobot {
       //arm off, intake on, drive on
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
-      setDriveMotors(0.0, -AUTO_DRIVE_SPEED);
+      setDriveMotors(0.0, AUTO_DRIVE_SPEED);
     } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + AUTO_DRIVE_TO_CHARGING_STATION_TIME) {
       //arm off, intake off, drive on
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
-      setDriveMotors(0.0, AUTO_DRIVE_SPEED);
+      setDriveMotors(0.0, -AUTO_DRIVE_TO_CHARGING_STATION_SPEED);
     } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + (AUTO_DRIVE_TO_CHARGING_STATION_TIME*2)){
       //arm off, intake off, drive on/off depending on angle of robot
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       if (balanceXMode) {
-        setDriveMotors(xAxisRate * AUTO_DRIVE_SPEED, 0.0);
+        setDriveMotors(xAxisRate * -AUTO_DRIVE_TO_CHARGING_STATION_SPEED, 0.0);
+        setLedColor(0, 0, 255);
       } else {
         setDriveMotors(0.0, 0.0);
+        setLedColor(0, 255, 0);
       }
     } else {
       setArmMotor(0.0);
