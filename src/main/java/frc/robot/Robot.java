@@ -16,6 +16,7 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.MedianFilter;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.trajectory.Trajectory;
@@ -101,6 +102,8 @@ public class Robot extends TimedRobot {
   Double ultrasonicTimer = 0.0;
 
   MedianFilter m_filter = new MedianFilter(10);
+
+  PIDController m_PidController = new PIDController(0.3596, 0.3, 0.3);
 
   /*
    * Magic numbers. Use these to adjust settings.
@@ -388,9 +391,6 @@ public class Robot extends TimedRobot {
     if (!enabled){
       setLedColor(255, 0, 0);
     }
-    if(ultrasonic.isRangeValid()){
-      setLedPercent(ultrasonic.getRangeInches());
-    }
     leds.setData(ledsBuffer);
     leds.start();
     enabled = false;
@@ -402,7 +402,7 @@ public class Robot extends TimedRobot {
       ultrasonic.ping();
       ultrasonicTimer = Timer.getFPGATimestamp();
     }
-    
+
     //System.out.println(ultrasonic.getRangeMM());
     // double measurement = ultrasonic.getRangeMM();
     // double filteredOutput = m_filter.calculate(measurement);
@@ -610,6 +610,28 @@ public class Robot extends TimedRobot {
       driveController.setRumble(GenericHID.RumbleType.kBothRumble, vectorLength(accel.getX(), accel.getY(), 0.0));
     } else{
       driveController.setRumble(GenericHID.RumbleType.kBothRumble, 0);
+    }
+
+    if(ultrasonic.isRangeValid() && (driveController.getXButton() || driveController.getAButton())) {
+      
+      if(Math.abs(intakeEncoder.getVelocity()) > 60){
+        setArmMotor(ARM_OUTPUT_POWER);
+        if(ultrasonic.getRangeInches() >= 40) {
+          setDriveMotors(0, -0.2);
+        } else if (ultrasonic.getRangeInches() <= 32) {
+          setDriveMotors(0, 0.1);
+        } else {
+          setDriveMotors(0.0, 0.0);
+        }
+      }else{
+        if(ultrasonic.getRangeInches()>44){
+          setArmMotor(-ARM_OUTPUT_POWER);
+        }
+        setDriveMotors(0, 0.25);
+      }
+      //double pidCalculation = m_PidController.calculate(ultrasonic.getRangeInches()-35);
+      //setDriveMotors(0.0, pidCalculation/20);
+      //System.out.println("PID output" + pidCalculation/30);
     }
   }
 }
