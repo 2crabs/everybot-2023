@@ -16,6 +16,7 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.filter.MedianFilter;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.AddressableLED;
@@ -96,6 +97,10 @@ public class Robot extends TimedRobot {
   double rumbleBuffer = 0.0;
 
   Accelerometer accel = new BuiltInAccelerometer();
+  Ultrasonic ultrasonic = new Ultrasonic(1, 2);
+  Double ultrasonicTimer = 0.0;
+
+  MedianFilter m_filter = new MedianFilter(10);
 
   /*
    * Magic numbers. Use these to adjust settings.
@@ -206,6 +211,8 @@ public class Robot extends TimedRobot {
     leds = new AddressableLED(1);
     ledsBuffer = new AddressableLEDBuffer(29);
     leds.setLength(ledsBuffer.getLength());
+
+    ///ultrasonic.setAutomaticMode(true);
   }
 
   /**
@@ -267,6 +274,16 @@ public class Robot extends TimedRobot {
   public void setLedColor(int R, int G, int B){
     for(int i=0; i<29; i++){
       ledsBuffer.setRGB(i, R, G, B);
+    }
+  }
+
+  public void setLedPercent(double percent){
+    for(int i=0; i<29; i++){
+      if (i < (int)(percent*0.29)){
+        ledsBuffer.setRGB(i, 0, 255, 0);
+      }else{
+        ledsBuffer.setRGB(i, 0, 0, 0);
+      }
     }
   }
 
@@ -371,6 +388,9 @@ public class Robot extends TimedRobot {
     if (!enabled){
       setLedColor(255, 0, 0);
     }
+    if(ultrasonic.isRangeValid()){
+      setLedPercent(ultrasonic.getRangeInches());
+    }
     leds.setData(ledsBuffer);
     leds.start();
     enabled = false;
@@ -378,6 +398,15 @@ public class Robot extends TimedRobot {
     //default color
     setLedColor(64, 64, 64);
 
+    if(Timer.getFPGATimestamp()-ultrasonicTimer > 0.08){
+      ultrasonic.ping();
+      ultrasonicTimer = Timer.getFPGATimestamp();
+    }
+    
+    //System.out.println(ultrasonic.getRangeMM());
+    // double measurement = ultrasonic.getRangeMM();
+    // double filteredOutput = m_filter.calculate(measurement);
+    //System.out.println("ultrasonic sensor reading: " + filteredOutput);
   }
 
   double autonomousStartTime;
