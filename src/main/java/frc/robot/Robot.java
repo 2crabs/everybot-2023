@@ -7,6 +7,7 @@ package frc.robot;
 import java.util.Vector;
 
 import javax.lang.model.util.ElementScanner6;
+import javax.print.DocFlavor.STRING;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
@@ -17,6 +18,7 @@ import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.filter.MedianFilter;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.trajectory.Trajectory;
@@ -27,6 +29,7 @@ import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 import edu.wpi.first.wpilibj.*;
 import edu.wpi.first.wpilibj.interfaces.Accelerometer;
@@ -42,6 +45,11 @@ public class Robot extends TimedRobot {
   private static final String kCubeAuto = "cube";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
+
+  /**
+   * The auto
+   */
+  private static final String AUTO_STRING = "charging long route";
 
   /*
    * Drive motor controller instances.
@@ -105,9 +113,19 @@ public class Robot extends TimedRobot {
 
   PIDController m_PidController = new PIDController(0.3596, 0.3, 0.3);
 
+  static final double AngularP = 0.3;
+  static final double AngularD = 0.0;
+  PIDController m_turnController = new PIDController(AngularP, 0, AngularD);
+  
+
   /*
    * Magic numbers. Use these to adjust settings.
    */
+
+  /**
+   * This is how close to on-target we want the robot to be.
+   */
+  static final double TURN_TOLERANCE_DEGREES = 5;
 
   /**
    * How many amps the arm motor can use.
@@ -152,19 +170,23 @@ public class Robot extends TimedRobot {
   /**
    * Time to drive back in auto
    */
-  static final double AUTO_DRIVE_TIME = 4.0;
+  static final double AUTO_DRIVE_TIME = 1.92;
 
   /**
    * Time to drive forward in auto
    */
   //2.75
-  static final double AUTO_DRIVE_TO_CHARGING_STATION_TIME = 2.75;
+  static final double AUTO_DRIVE_TO_CHARGING_STATION_TIME = 2.8;
+  static final double AUTO_DRIVE_PAST_LINE_TIME = 5;
+  static final double AUTO_RIGHT_ANGLE_TURN_TIME = 0.5;
+  static final double AUTO_DRIVE_SIDEWAYS_TIME = 1;
+  static final double AUTO_TURN_SPEED = 0.25;
 
   /**
    * Speed to drive backwards in auto
    */
   static final double AUTO_DRIVE_SPEED = -0.25;
-  static final double AUTO_DRIVE_TO_CHARGING_STATION_SPEED = -0.6;
+  static final double AUTO_DRIVE_TO_CHARGING_STATION_SPEED = -0.45;
 
   double startTime = -1.0;
   /**
@@ -180,12 +202,19 @@ public class Robot extends TimedRobot {
   /**
    * This method is run once when the robot is first started up.
    */
+  //Vision vision;
   @Override
   public void robotInit() {
     m_chooser.setDefaultOption("do nothing", kNothingAuto);
     m_chooser.addOption("cone and mobility", kConeAuto);
     m_chooser.addOption("cube and mobility", kCubeAuto);
+    m_chooser.addOption("cube and charging station", kCubeAuto);
+    m_chooser.addOption("cube and long distance charging station route", kCubeAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
+    driveLeftSpark.setNeutralMode(NeutralMode.Brake);
+    driveRightSpark.setNeutralMode(NeutralMode.Brake);
+    driveRightVictor.setNeutralMode(NeutralMode.Brake);
+    driveLeftVictor.setNeutralMode(NeutralMode.Brake);
 
     /*
      * You will need to change some of these from false to true.
@@ -214,6 +243,8 @@ public class Robot extends TimedRobot {
     leds = new AddressableLED(1);
     ledsBuffer = new AddressableLEDBuffer(29);
     leds.setLength(ledsBuffer.getLength());
+
+    //vision = new Vision();
 
     ///ultrasonic.setAutomaticMode(true);
   }
@@ -314,6 +345,22 @@ public class Robot extends TimedRobot {
       }
     }
   }
+  public void washburnLed(double speed){
+    for(int i=0; i<14; i++){
+      if(Math.abs((i-(int)(Timer.getFPGATimestamp()*speed))%6) < 3) {
+        ledsBuffer.setRGB(i, 0, 0, 255);
+      } else {
+        ledsBuffer.setRGB(i, 0, 0, 0);
+      }
+    }
+    for(int i=14; i<29; i++){
+      if(Math.abs((i+(int)(Timer.getFPGATimestamp()*speed))%6) < 3) {
+        ledsBuffer.setRGB(i, 255, 35, 0);
+      } else {
+        ledsBuffer.setRGB(i, 0, 0, 0);
+      }
+    }
+  }
 
   public double vectorLength(double x, double y, double z){
     return Math.sqrt((x*x)+(y*y)+(z*z));
@@ -389,7 +436,9 @@ public class Robot extends TimedRobot {
       blinkLed(10.0, 255, 0, 0);
     }
     if (!enabled){
-      setLedColor(255, 0, 0);
+      washburnLed(7.0);
+      rumbleBuffer=0.0;
+      driveController.setRumble(RumbleType.kBothRumble, 0.0);
     }
     leds.setData(ledsBuffer);
     leds.start();
@@ -407,6 +456,7 @@ public class Robot extends TimedRobot {
     // double measurement = ultrasonic.getRangeMM();
     // double filteredOutput = m_filter.calculate(measurement);
     //System.out.println("ultrasonic sensor reading: " + filteredOutput);
+    //vision.update();
   }
 
   double autonomousStartTime;
@@ -436,6 +486,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousPeriodic() {
+    double additionalTime = 0.0;
+
     enabled = true;
     // if (m_autoSelected == kNothingAuto) {
     //   setArmMotor(0.0);
@@ -491,12 +543,27 @@ public class Robot extends TimedRobot {
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, AUTO_DRIVE_SPEED);
-    } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + AUTO_DRIVE_TO_CHARGING_STATION_TIME) {
+    } else if(AUTO_STRING == "charging long route") {
+      additionalTime = AUTO_DRIVE_PAST_LINE_TIME + AUTO_RIGHT_ANGLE_TURN_TIME + AUTO_DRIVE_SIDEWAYS_TIME;
+      if(timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + AUTO_DRIVE_PAST_LINE_TIME) {
+        setArmMotor(0.0);
+        setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
+        setDriveMotors(0.0, -AUTO_DRIVE_SPEED);
+      } else if(timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + AUTO_DRIVE_PAST_LINE_TIME + AUTO_RIGHT_ANGLE_TURN_TIME) {
+        setArmMotor(0.0);
+        setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
+        setDriveMotors(AUTO_TURN_SPEED, 0.0);
+      } else if(timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + AUTO_DRIVE_PAST_LINE_TIME + AUTO_RIGHT_ANGLE_TURN_TIME + AUTO_DRIVE_SIDEWAYS_TIME) {
+        setArmMotor(0.0);
+        setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
+        setDriveMotors(0.0, AUTO_DRIVE_SPEED);
+      }
+    } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + AUTO_DRIVE_TO_CHARGING_STATION_TIME + additionalTime) {
       //arm off, intake off, drive on
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
       setDriveMotors(0.0, -AUTO_DRIVE_TO_CHARGING_STATION_SPEED);
-    } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + (AUTO_DRIVE_TO_CHARGING_STATION_TIME*2)){
+    } else if (timeElapsed < ARM_EXTEND_TIME_S + AUTO_THROW_TIME_S + ARM_EXTEND_TIME_S + AUTO_DRIVE_TIME + (AUTO_DRIVE_TO_CHARGING_STATION_TIME*2) + additionalTime){
       //arm off, intake off, drive on/off depending on angle of robot
       setArmMotor(0.0);
       setIntakeMotor(0.0, INTAKE_CURRENT_LIMIT_A);
@@ -553,7 +620,7 @@ public class Robot extends TimedRobot {
     
     double intakePower;
     int intakeAmps;
-    if (manipulatorController.getAButton()) {
+    if (manipulatorController.getBButton()) {
       // cube in or cone out
       intakePower = INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
@@ -562,7 +629,7 @@ public class Robot extends TimedRobot {
       if(Math.abs(intakeEncoder.getVelocity()) < 120.0){
         rumbleBuffer = 1.0;
       }
-    } else if (manipulatorController.getXButton()) {
+    } else if (manipulatorController.getAButton()) {
       // cone in or cube out
       intakePower = -INTAKE_OUTPUT_POWER;
       intakeAmps = INTAKE_CURRENT_LIMIT_A;
@@ -606,7 +673,7 @@ public class Robot extends TimedRobot {
       setDriveMotors(driveController.getLeftX()/2.2, driveController.getLeftY()/1.5);
     }
 
-    if (vectorLength(accel.getX(), accel.getY(), 0.0) > 0.45) {
+    if (vectorLength(accel.getX(), accel.getY(), 0.0) > 0.75) {
       driveController.setRumble(GenericHID.RumbleType.kBothRumble, vectorLength(accel.getX(), accel.getY(), 0.0));
     } else{
       driveController.setRumble(GenericHID.RumbleType.kBothRumble, 0);
@@ -616,9 +683,9 @@ public class Robot extends TimedRobot {
       
       if(Math.abs(intakeEncoder.getVelocity()) > 60){
         setArmMotor(ARM_OUTPUT_POWER);
-        if(ultrasonic.getRangeInches() >= 40) {
+        if(ultrasonic.getRangeInches() >= 38) {
           setDriveMotors(0, -0.2);
-        } else if (ultrasonic.getRangeInches() <= 32) {
+        } else if (ultrasonic.getRangeInches() <= 30) {
           setDriveMotors(0, 0.1);
         } else {
           setDriveMotors(0.0, 0.0);

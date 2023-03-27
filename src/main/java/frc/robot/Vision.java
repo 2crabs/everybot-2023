@@ -10,14 +10,14 @@ public class Vision {
 
     public Vision() {
         //Address of controller is 0
-        Wire = new I2C(I2C.Port.kMXP, 0);
+        Wire = new I2C(I2C.Port.kOnboard, 1);
     }
 
     public void update(){
         int numBytes = 1;
         byte[] data = new byte[numBytes];
         //Address of peripheral
-        Wire.read(1, numBytes, data);
+        Wire.read(12, numBytes, data);
         val = data[0];
     }
 }
